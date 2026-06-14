@@ -228,6 +228,7 @@ body{font-family:var(--font);background:var(--gray-50);color:var(--gray-800);min
   .armgrid{grid-template-columns:repeat(2,1fr)}
   .mgr{grid-template-columns:repeat(3,1fr)}
 }
+@keyframes bell{0%{transform:rotate(-15deg)}100%{transform:rotate(15deg)}}
 </style>
 </head>
 <body>
@@ -323,7 +324,7 @@ const mn=m=>(LANG==='pt'?MN_PT:MN_EN)[m]||m;
 const BASE='https://raw.githubusercontent.com/jmnbastos-stack/aviludo-dados/main';
 
 // ─── INDEXEDDB ───────────────────────────────────────────
-const DB_NAME='AviludoDB5',DB_VER=1,STORE='dados';
+const DB_NAME='AviludoDB6',DB_VER=1,STORE='dados';
 let db;
 
 function openDB(){
@@ -529,7 +530,7 @@ function renderFicha(){
 
 function getPerf(){
   if(MOR)return CLI.moradas[MOR].perf||{};
-  let v24=0,w24=0,v25=0,w25=0,v26=0,w26=0,vv45=0,vv56=0,r26=0;
+  let v24=0,w24=0,v25=0,w25=0,v26=0,w26=0,vv45=0,vv56=0,r25=0,r26=0;
   Object.values(CLI.moradas).forEach(inf=>{
     const p=inf.perf||{};
     if(p.val2024){v24+=p.val2024;w24+=p.val2024*(p.mb2024||0)}
@@ -537,12 +538,13 @@ function getPerf(){
     if(p.val2026){v26+=p.val2026;w26+=p.val2026*(p.mb2026||0)}
     if(p.var_val_2425)vv45+=p.var_val_2425;
     if(p.var_val_2526)vv56+=p.var_val_2526;
+    if(p.refs2025)r25+=p.refs2025;
     if(p.refs2026)r26+=p.refs2026;
   });
   return{val2024:v24||null,mb2024:v24?w24/v24:null,val2025:v25||null,mb2025:v25?w25/v25:null,
     val2026:v26||null,mb2026:v26?w26/v26:null,var_val_2425:vv45||null,
     var_pct_2425:v24?vv45/v24:null,var_val_2526:vv56||null,
-    var_pct_2526:v25?vv56/v25:null,refs2026:r26||null};
+    var_pct_2526:v25?vv56/v25:null,refs2025:r25||null,refs2026:r26||null};
 }
 
 function renderHeader(){
@@ -553,14 +555,54 @@ function renderHeader(){
   const cond=inf?inf.cond_comerciais:(()=>{const cs=[...new Set(Object.values(CLI.moradas).map(m=>m.cond_comerciais).filter(Boolean))];return cs.join(' / ')||'—'})();
   const vend=inf?`${inf.vendedor_nome||''} (${inf.vendedor_cod||''})`:
     (()=>{const vs=[...new Set(Object.values(CLI.moradas).map(m=>m.vendedor_cod).filter(Boolean))];return vs.join(', ')})();
+
+  // KAM
+  const kam=CLI.kam||'NÃO';
+  const isKam=kam!=='NÃO';
+  const kamBadge=isKam?`<span style="display:inline-flex;align-items:center;gap:4px;background:#e8a020;color:#0d2137;font-size:10px;font-weight:700;padding:3px 8px;border-radius:10px;margin-left:8px">🔔 KAM · ${kam}</span>`:'';
+
+  // YTD: var FY26 vs FY25
+  const ytd=p.var_val_2526;
+  const ytdC=ytd==null?'#fff':ytd>=0?'#4ade80':'#f87171';
+  const ytdStr=ytd!=null?((ytd>=0?'+':'')+fmt(ytd)):'—';
+
+  // Artigos
+  const refs25=p.refs2025||null;
+  const refs26=p.refs2026||null;
+
+  // Região e Estabel
+  const regiao=inf?inf.regiao:(()=>{const rs=[...new Set(Object.values(CLI.moradas).map(m=>m.regiao).filter(Boolean))];return rs.join(', ')||'—'})();
+  const estab=inf?expandArm(inf.estab||''):(()=>{const es=[...new Set(Object.values(CLI.moradas).map(m=>m.estab).filter(Boolean))];return es.map(e=>expandArm(e)).join(', ')||'—'})();
+
   document.getElementById('fhdr').innerHTML=`
-    <div class="fnome">${CLI.nome}</div>
-    <div class="fcod">Cód. ${CLI.cod} · ${MOR||'Todas as Moradas'}</div>
-    <div class="fmeta">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      <div>
+        <div class="fnome">${CLI.nome}${kamBadge}</div>
+        <div class="fcod">Cód. ${CLI.cod} · ${MOR||'Todas as Moradas'}${regiao?' · '+regiao:''}</div>
+      </div>
+      ${isKam?`<div style="font-size:20px;animation:bell .6s ease infinite alternate">🔔</div>`:''}
+    </div>
+    <div class="fmeta" style="grid-template-columns:repeat(4,1fr);margin-top:10px">
       <div><div class="mlbl">Condições</div><div class="mval g">${cond}</div></div>
       <div><div class="mlbl">PMR</div><div class="mval" style="color:${pmrC}">${pmr?Math.round(pmr)+' dias':'—'}</div></div>
       <div><div class="mlbl">Vendedor</div><div class="mval" style="font-size:10px;font-weight:400">${vend||'—'}</div></div>
-      <div><div class="mlbl">Faturação FY26</div><div class="mval g">${p.val2026?fmt(p.val2026):'—'}</div></div>
+      <div><div class="mlbl">Armazém</div><div class="mval" style="font-size:10px;font-weight:400">${estab}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px">
+      <div><div class="mlbl">Fat. FY2024</div><div class="mval">${p.val2024?fmt(p.val2024):'—'}</div></div>
+      <div><div class="mlbl">Fat. FY2025</div><div class="mval">${p.val2025?fmt(p.val2025):'—'}</div></div>
+      <div><div class="mlbl">Fat. FY2026</div><div class="mval g">${p.val2026?fmt(p.val2026):'—'}</div></div>
+      <div><div class="mlbl">Fat. YTD FY26 vs FY25</div><div class="mval" style="color:${ytdC}">${ytdStr}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px">
+      <div><div class="mlbl">MB FY2025</div><div class="mval">${p.mb2025?fmtP(p.mb2025):'—'}</div></div>
+      <div><div class="mlbl">MB FY2026</div><div class="mval g">${p.mb2026?fmtP(p.mb2026):'—'}</div></div>
+      <div><div class="mlbl">Artigos FY2025</div><div class="mval">${refs25?refs25+' refs':'—'}</div></div>
+      <div><div class="mlbl">Artigos FY2026</div><div class="mval g">${refs26?refs26+' refs':'—'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px">
+      <div><div class="mlbl">Cliente KAM</div><div class="mval" style="color:${isKam?'#fbbf24':'rgba(255,255,255,.5)'}">${isKam?'✅ '+kam:'NÃO'}</div></div>
+      <div><div class="mlbl">PMR</div><div class="mval" style="color:${pmrC}">${pmr?Math.round(pmr)+' dias':'—'}</div></div>
     </div>`;
 }
 
