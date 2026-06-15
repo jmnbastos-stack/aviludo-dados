@@ -1,0 +1,27 @@
+name: Actualizar Artigos AVI-COMPRAS
+
+on:
+  push:
+    paths:
+      - 'AVI-COMPRAS*.xls'
+      - 'AVI-COMPRAS*.xlsx'
+
+jobs:
+  processar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install xlrd requests
+
+      - name: Processar AVI-COMPRAS e actualizar artigos.json
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: python processar_avicompras.py
